@@ -2,6 +2,8 @@ import pandas as pd
 import argparse
 from tqdm import tqdm
 from heapq import heappush, heappop
+import os
+import pickle
 
 from recommenders.models.deeprec.models.graphrec.lightgcn import LightGCN
 from recommenders.evaluation.python_evaluation import map_at_k, ndcg_at_k, precision_at_k, recall_at_k
@@ -41,6 +43,14 @@ def recommend_k_items(args: argparse.Namespace, algo: surprise.AlgoBase, test: p
 
 
 def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
+    epochs = args.load_epoch if args.load_epoch else args.train_epochs
+    metrics_filepath = os.path.join(
+        'gnn', 'lightgcn', 'outputs', args.dataset_size, 'eval', f'metrics_epoch_{epochs}.pt'
+    )
+    if os.path.exists(metrics_filepath):
+        with open(metrics_filepath, 'rb') as f:
+            return pickle.load(f)
+    
     eval_results = {'LightGCN': model.recommend_k_items(test, top_k=args.top_k, remove_seen=False)}
     
     baselines = (
@@ -53,6 +63,7 @@ def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
     for name, algo in baselines:
         eval_results[name] = recommend_k_items(args, algo=algo, test=test, top_k=args.top_k)
     
+    metrics = dict()
     for name, topk_scores in eval_results.items():
         eval_map = map_at_k(test, topk_scores, k=args.top_k)
         eval_ndcg = ndcg_at_k(test, topk_scores, k=args.top_k)
@@ -68,3 +79,16 @@ def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
             sep='\n'
         )
         print(f'************************************************************')
+        
+        metrics[name] = {
+            'map': eval_map, 'ndcg': eval_ndcg, 'precision': eval_precision, 'recall': eval_recall
+        }
+
+    os.makedirs(
+        os.path.dirname(metrics_filepath),
+        exist_ok=True
+    )
+    with open(file=metrics_filepath, mode='wb') as f:
+        pickle.dump(metrics, f)
+    
+    return metrics

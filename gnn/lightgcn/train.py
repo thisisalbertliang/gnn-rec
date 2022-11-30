@@ -14,12 +14,16 @@ def train(args: argparse.Namespace):
     train, test = python_stratified_split(data=dataset, ratio=args.train_size)
     data = ImplicitCF(train=train, test=test, seed=args.seed)
     
-    hparams = prepare_hparams(yaml_file=args.hparams_yaml_file)
+    hparams = prepare_hparams(
+        yaml_file=args.hparams_yaml_file,
+        MODEL_DIR=os.path.join('./gnn/lightgcn/outputs', args.dataset_size),
+        epochs=args.train_epochs,
+    )
     model = LightGCN(hparams=hparams, data=data, seed=args.seed)
     
     if args.load_epoch:
         model.load(model_path=os.path.join(
-            'gnn', 'lightgcn', 'outputs', f'epoch_{args.load_epoch}'
+            'gnn', 'lightgcn', 'outputs', args.dataset_size, f'epoch_{args.load_epoch}'
         ))
     else:
         with Timer() as train_time:
