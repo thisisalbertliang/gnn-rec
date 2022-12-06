@@ -41,7 +41,7 @@ def parse_args():
     )
     parser.add_argument(
         '--train-epochs',
-        default=50,
+        default=80,
         type=int
     )
     

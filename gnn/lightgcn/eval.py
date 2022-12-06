@@ -42,16 +42,19 @@ def recommend_k_items(args: argparse.Namespace, algo: surprise.AlgoBase, test: p
     return res
 
 
-def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
+def eval(args: argparse.Namespace, models, test: pd.DataFrame):
     epochs = args.load_epoch if args.load_epoch else args.train_epochs
     metrics_filepath = os.path.join(
         'gnn', 'lightgcn', 'outputs', args.dataset_size, 'eval', f'metrics_epoch_{epochs}.pt'
     )
-    if os.path.exists(metrics_filepath):
-        with open(metrics_filepath, 'rb') as f:
-            return pickle.load(f)
+    # if os.path.exists(metrics_filepath):
+    #     with open(metrics_filepath, 'rb') as f:
+    #         return pickle.load(f)
     
-    eval_results = {'LightGCN': model.recommend_k_items(test, top_k=args.top_k, remove_seen=False)}
+    eval_results = {
+        'GAT': models['gat'].recommend_k_items(test, top_k=args.top_k, remove_seen=False),
+        'LightGCN': models['lightgcn'].recommend_k_items(test, top_k=args.top_k, remove_seen=False)
+    }
     
     baselines = (
         ('SVD', SVD(random_state=0)),
