@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument(
         '--hparams-yaml-file',
         default=os.path.join(
-            'gnn', 'configs', 'lightgcn_hparams.yaml'
+            'gnn', 'configs', 'exp_params.yaml'
         ),
         type=str,
     )

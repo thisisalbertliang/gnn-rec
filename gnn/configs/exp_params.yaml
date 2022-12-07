@@ -9,7 +9,7 @@ model:
     model_type : "" # just to make recommenders library's checks happy
     embed_size : 64 # the embedding dimension of users and items
     n_layers : 3 # number of layers of the model
-    neighbor_aggregator : "degree_norm" # "degree_norm", "attention"
+    neighbor_aggregator : "attention" # "degree_norm", "attention"
     info_updater : "direct" # "direct", "linear"
     final_node_repr : "mean" # "mean", "concat", ("weighted", "attention")
     
@@ -28,4 +28,4 @@ info:
     save_model : True # whether to save model
     save_epoch : 50 # if save_model is set to True, save the model every save_epoch
     metrics : ["recall", "ndcg", "precision", "map"] # metrics for evaluation
-    ckpt_dir : ./gnn/outputs/checkpoints # directory of saved models
+    model_dir : ./gnn/outputs/ # directory of models checkpoints, metrics, and plots

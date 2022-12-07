@@ -19,7 +19,7 @@ from surprise import (
 
 
 def recommend_k_items(params, algo: surprise.AlgoBase, test: pd.DataFrame, top_k: int):
-    trainset = Dataset.load_builtin(f'ml-{params.dataset_size}').build_full_trainset()
+    trainset = Dataset.load_builtin(f'ml-{params.dataset_size}').build_full_trainset() # TODO: train on trainset only
     algo.fit(trainset=trainset)
     
     res = []
@@ -40,7 +40,7 @@ def recommend_k_items(params, algo: surprise.AlgoBase, test: pd.DataFrame, top_k
     res = res.astype({'userID': 'int64', 'itemID': 'int64', 'prediction': 'float32'})
     return res
 
-def eval_baselines(params, test):
+def evaluate_baselines(params, test):
     eval_results = {}
     baselines = (
         ('SVD', SVD(random_state=0)),
@@ -50,6 +50,7 @@ def eval_baselines(params, test):
         ('NormalPredictor', NormalPredictor()),
     )
     for name, algo in baselines:
+        print(f'>>> running recommendation with {name}')
         eval_results[name] = recommend_k_items(params, algo=algo, test=test, top_k=params.top_k)
     return eval_results
 
@@ -89,18 +90,18 @@ def compute_metrics(params, test, eval_results, dump_dir=None):
 
 def eval(params, models, test: pd.DataFrame, eval_baselines=True):
     # epochs = params.load_epoch if params.load_epoch else params.epochs
-    metrics_dir = os.path.join('gnn', 'outputs', params.dataset_size, 'metrics')
-    # if os.path.exists(metrics_filepath):
-    #     with open(metrics_filepath, 'rb') as f:
-    #         return pickle.load(f)
+    metrics_dir = os.path.join(params.model_dir, params.dataset_size, 'metrics')
+    if not os.path.exists(metrics_dir):
+        os.makedirs(metrics_dir)
     
     eval_results = {}
 
     for name, model in models.items():
-        eval_results[name] = model.recommend_k_items(test, top_k=params.top_k, remove_seen=False),
+        print(f'>>> running recommendation with {name}')
+        eval_results[name] = model.recommend_k_items(test, top_k=params.top_k, remove_seen=False)
 
     if eval_baselines:
-        eval_results += eval_baselines(params, test)
+        eval_results |= evaluate_baselines(params, test)
     
     return compute_metrics(params, test, eval_results, dump_dir=metrics_dir)
     

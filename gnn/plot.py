@@ -20,8 +20,13 @@ def plot(metrics: Dict[str, Dict[str, float]], save_path=None):
     delta = np.linspace(start=-width, stop=width, num=len(metrics))
     
     fig, ax = plt.subplots()
+    fig.set_size_inches(9,6)
     rects = []
-    for i, (model_name, model_metrics) in enumerate(metrics.items()):
+
+    metrics = list(metrics.items())
+    metrics.sort(key=lambda x:-x[1]['ndcg'])
+
+    for i, (model_name, model_metrics) in enumerate(metrics):
         metrics_values = [
             model_metrics['map'], model_metrics['ndcg'], model_metrics['precision'], model_metrics['recall']
         ]
@@ -49,12 +54,12 @@ def plot(metrics: Dict[str, Dict[str, float]], save_path=None):
     #     'gnn', 'lightgcn', 'outputs', params.dataset_size, 'eval', f'metrics_epoch_{epochs}.png'
     # )
     if save_path is not None:
-        fig.savefig(save_path)
+        fig.savefig(save_path, dpi=300)
 
 if __name__ == "__main__":
     METRICS_DIR = 'gnn/outputs/100k/metrics'
-    PLOT_DIR = 'gnn/outputs/plots'
+    PLOT_DIR = 'gnn/outputs/100k/plots'
     os.makedirs(PLOT_DIR, exist_ok=True)
     
     metrics = load_metrics(METRICS_DIR)
-    plot(metrics, save_path=f'{PLOT_DIR}/metrics.png')
+    plot(metrics, save_path=f'{PLOT_DIR}/ranking_metrics.png')

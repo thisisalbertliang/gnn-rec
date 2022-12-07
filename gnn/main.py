@@ -1,7 +1,6 @@
 from args import parse_args
 from train import train
 from eval import eval
-from plot import plot
 
 from recommenders.models.deeprec.deeprec_utils import prepare_hparams
 from recommenders.models.deeprec.DataModel.ImplicitCF import ImplicitCF
@@ -25,9 +24,6 @@ if __name__ == '__main__':
 
     models = {
         params.model_name : train(params, data)
-        # 'LightGCN': train(params, 'lightgcn', data),
-        # 'GAT': train(params, 'gat', data)
     }
 
-    metrics = eval(params, models, test_set)
-    # plot(params, metrics)
+    metrics = eval(params, models, test_set, eval_baselines=False)

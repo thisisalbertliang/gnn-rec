@@ -87,7 +87,8 @@ class GNN(object):
         self.save_model = params.save_model
         self.save_epoch = params.save_epoch
         self.metrics = params.metrics
-        self.model_dir = params.ckpt_dir
+        self.model_dir = params.model_dir
+        self.params = params
 
         self.neighbor_aggregator = params.neighbor_aggregator
         self.info_updater = params.info_updater
@@ -154,7 +155,7 @@ class GNN(object):
         self.opt = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(
             self.loss
         )
-        self.saver = tf.compat.v1.train.Saver(max_to_keep=1)
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=3)
 
         gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
         self.sess = tf.compat.v1.Session(
@@ -293,9 +294,9 @@ class GNN(object):
             train_time = train_end - train_start
 
             if self.save_model and epoch % self.save_epoch == 0:
-                save_path_str = os.path.join(self.model_dir, self.params.dataset_size, self.params.model_name, "epoch_" + str(epoch))
-                if not os.path.exists(save_path_str):
-                    os.makedirs(save_path_str)
+                save_path_str = os.path.join(self.model_dir, self.params.dataset_size, "checkpoints", self.params.model_name, "epoch_" + str(epoch))
+                if not os.path.exists(os.path.dirname(save_path_str)):
+                    os.makedirs(os.path.dirname(save_path_str))
                 checkpoint_path = self.saver.save(  # noqa: F841
                     sess=self.sess, save_path=save_path_str
                 )
