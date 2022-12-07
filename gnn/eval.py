@@ -5,7 +5,6 @@ from heapq import heappush, heappop
 import os
 import pickle
 
-from recommenders.models.deeprec.models.graphrec.lightgcn import LightGCN
 from recommenders.evaluation.python_evaluation import map_at_k, ndcg_at_k, precision_at_k, recall_at_k
 
 import surprise
@@ -19,8 +18,8 @@ from surprise import (
 )
 
 
-def recommend_k_items(args: argparse.Namespace, algo: surprise.AlgoBase, test: pd.DataFrame, top_k: int):
-    trainset = Dataset.load_builtin(f'ml-{args.dataset_size}').build_full_trainset()
+def recommend_k_items(params, algo: surprise.AlgoBase, test: pd.DataFrame, top_k: int):
+    trainset = Dataset.load_builtin(f'ml-{params.dataset_size}').build_full_trainset() # TODO: train on trainset only
     algo.fit(trainset=trainset)
     
     res = []
@@ -41,18 +40,8 @@ def recommend_k_items(args: argparse.Namespace, algo: surprise.AlgoBase, test: p
     res = res.astype({'userID': 'int64', 'itemID': 'int64', 'prediction': 'float32'})
     return res
 
-
-def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
-    epochs = args.load_epoch if args.load_epoch else args.train_epochs
-    metrics_filepath = os.path.join(
-        'gnn', 'lightgcn', 'outputs', args.dataset_size, 'eval', f'metrics_epoch_{epochs}.pt'
-    )
-    if os.path.exists(metrics_filepath):
-        with open(metrics_filepath, 'rb') as f:
-            return pickle.load(f)
-    
-    eval_results = {'LightGCN': model.recommend_k_items(test, top_k=args.top_k, remove_seen=False)}
-    
+def evaluate_baselines(params, test):
+    eval_results = {}
     baselines = (
         ('SVD', SVD(random_state=0)),
         ('NMF', NMF(random_state=0)),
@@ -61,14 +50,24 @@ def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
         ('NormalPredictor', NormalPredictor()),
     )
     for name, algo in baselines:
-        eval_results[name] = recommend_k_items(args, algo=algo, test=test, top_k=args.top_k)
-    
+        print(f'>>> running recommendation with {name}')
+        eval_results[name] = recommend_k_items(params, algo=algo, test=test, top_k=params.top_k)
+    return eval_results
+
+
+def compute_metrics(params, test, eval_results, dump_dir=None):
+    if dump_dir is not None:
+        os.makedirs(
+            os.path.dirname(dump_dir),
+            exist_ok=True
+        )
+
     metrics = dict()
     for name, topk_scores in eval_results.items():
-        eval_map = map_at_k(test, topk_scores, k=args.top_k)
-        eval_ndcg = ndcg_at_k(test, topk_scores, k=args.top_k)
-        eval_precision = precision_at_k(test, topk_scores, k=args.top_k)
-        eval_recall = recall_at_k(test, topk_scores, k=args.top_k)
+        eval_map = map_at_k(test, topk_scores, k=params.top_k)
+        eval_ndcg = ndcg_at_k(test, topk_scores, k=params.top_k)
+        eval_precision = precision_at_k(test, topk_scores, k=params.top_k)
+        eval_recall = recall_at_k(test, topk_scores, k=params.top_k)
 
         print(f'********************** {name} Results **********************')
         print(
@@ -84,11 +83,25 @@ def eval(args: argparse.Namespace, model: LightGCN, test: pd.DataFrame):
             'map': eval_map, 'ndcg': eval_ndcg, 'precision': eval_precision, 'recall': eval_recall
         }
 
-    os.makedirs(
-        os.path.dirname(metrics_filepath),
-        exist_ok=True
-    )
-    with open(file=metrics_filepath, mode='wb') as f:
-        pickle.dump(metrics, f)
-    
+        with open(f'{dump_dir}/{name}.metrics', 'wb') as f:
+            pickle.dump(metrics[name], f)
     return metrics
+
+
+def eval(params, models, test: pd.DataFrame, eval_baselines=True):
+    # epochs = params.load_epoch if params.load_epoch else params.epochs
+    metrics_dir = os.path.join(params.model_dir, params.dataset_size, 'metrics')
+    if not os.path.exists(metrics_dir):
+        os.makedirs(metrics_dir)
+    
+    eval_results = {}
+
+    for name, model in models.items():
+        print(f'>>> running recommendation with {name}')
+        eval_results[name] = model.recommend_k_items(test, top_k=params.top_k, remove_seen=False)
+
+    if eval_baselines:
+        eval_results |= evaluate_baselines(params, test)
+    
+    return compute_metrics(params, test, eval_results, dump_dir=metrics_dir)
+    
