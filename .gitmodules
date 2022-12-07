@@ -1,0 +1,3 @@
+[submodule "gnn/lightgcn/recommenders"]
+	path = gnn/lightgcn/recommenders
+	url = https://github.com/microsoft/recommenders.git
