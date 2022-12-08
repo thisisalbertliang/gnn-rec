@@ -22,6 +22,11 @@ def plot(metrics: Dict[str, Dict[str, float]], save_path=None):
     fig, ax = plt.subplots()
     fig.set_size_inches(9,6)
     rects = []
+    
+    # ensures all models were trained for the same number of epochs
+    unique_epochs = set(model_metrics['epochs'] for model_metrics in metrics.values())
+    assert len(unique_epochs) == 1
+    unique_epochs = unique_epochs.pop()
 
     metrics = list(metrics.items())
     metrics.sort(key=lambda x:-x[1]['ndcg'])
@@ -40,7 +45,7 @@ def plot(metrics: Dict[str, Dict[str, float]], save_path=None):
         )
     
     ax.set_ylabel('Scores')
-    ax.set_title('Rank-based Metrics by Model')
+    ax.set_title(f'Rank-based Metrics by Model (Epochs = {unique_epochs})')
     ax.set_xticks(x, labels)
     ax.legend()
     

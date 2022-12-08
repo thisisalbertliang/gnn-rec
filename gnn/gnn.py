@@ -94,7 +94,7 @@ class GNN(object):
         self.info_updater = params.info_updater
         self.final_node_repr = params.final_node_repr
         assert self.neighbor_aggregator in ("degree_norm", "attention")
-        assert self.info_updater in ("direct", "linear")
+        assert self.info_updater in ("direct", "single_linear", "multi_linear")
         assert self.final_node_repr in ("mean", "concat", "weighted", "attention")
 
         metric_options = ["map", "ndcg", "precision", "recall"]
@@ -116,6 +116,7 @@ class GNN(object):
         self.neg_items = tf.compat.v1.placeholder(tf.int32, shape=(None,))
 
         self.weights = self._init_weights()
+        self.info_updater = self._init_info_updater()
 
         self.gat = GraphAttentionLayer(self.emb_dim, self.emb_dim, dropout=0, alpha=0.2)
 
@@ -184,6 +185,24 @@ class GNN(object):
         print("Using xavier initialization.")
 
         return all_weights
+    
+    def _init_info_updater(self):
+        if self.info_updater == "multi_linear":
+            return [
+                tf.compat.v1.layers.Dense(
+                    units=self.emb_dim, activation=tf.nn.leaky_relu, use_bias=True
+                )
+                for _ in range(self.n_layers + 1)
+            ]
+        elif self.info_updater == "single_linear":
+            return (self.n_layers + 1) * [tf.compat.v1.layers.Dense(
+                units=self.emb_dim, activation=tf.nn.leaky_relu, use_bias=True
+            )]
+        else:
+            return [
+                tf.identity
+                for _ in range(self.n_layers + 1)
+            ]
 
     def _create_embeddings(self):
         """Calculate the average embeddings of users and items after every layer of the model.
@@ -199,11 +218,10 @@ class GNN(object):
         ego_embeddings = tf.concat(
             [self.weights["user_embedding"], self.weights["item_embedding"]], axis=0
         )
-        # all_embeddings = [sigmoid(ego_embeddings @ W)] # TODO
+        ego_embeddings = self.info_updater[0](ego_embeddings)
         all_embeddings = [ego_embeddings]
 
-        for k in range(0, self.n_layers):
-            # print(f'A_hat shape: {A_hat.shape}, ego_embeddings shape: {ego_embeddings.shape}')
+        for k in range(1, self.n_layers + 1):
             if self.neighbor_aggregator == "attention":
                 ego_embeddings = self.gat(ego_embeddings, A_hat) # (2625, 64)
             elif self.neighbor_aggregator == "degree_norm":
@@ -211,9 +229,7 @@ class GNN(object):
             else:
                 raise NotImplementedError()
 
-            # TODO
-            # ego_embeddings = sigmoid(ego_embeddings @ W)
-
+            ego_embeddings = self.info_updater[k](ego_embeddings)
             all_embeddings += [ego_embeddings]
 
         all_embeddings = tf.stack(all_embeddings, 1) # (2625, 4, 64)

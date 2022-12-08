@@ -80,7 +80,8 @@ def compute_metrics(params, test, eval_results, dump_dir=None):
         print(f'************************************************************')
         
         metrics[name] = {
-            'map': eval_map, 'ndcg': eval_ndcg, 'precision': eval_precision, 'recall': eval_recall
+            'map': eval_map, 'ndcg': eval_ndcg, 'precision': eval_precision, 'recall': eval_recall,
+            'epochs': params.epochs
         }
 
         with open(f'{dump_dir}/{name}.metrics', 'wb') as f:
