@@ -1,3 +1,6 @@
 [submodule "gnn/lightgcn/recommenders"]
 	path = gnn/lightgcn/recommenders
 	url = https://github.com/microsoft/recommenders.git
+[submodule "10708-Final-Report"]
+	path = 10708-Final-Report
+	url = https://github.com/thisisalbertliang/10708-Final-Report.git
