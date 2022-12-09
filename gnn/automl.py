@@ -66,4 +66,4 @@ if __name__ == '__main__':
                 all_metrics['modelname'].append(model_name)
 
     df = pd.DataFrame(data=all_metrics)
-    df.to_csv('model_performances.csv')
+    df.to_csv(params.automl_res_path)

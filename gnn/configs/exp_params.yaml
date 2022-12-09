@@ -29,3 +29,4 @@ info:
     save_epoch : 50 # if save_model is set to True, save the model every save_epoch
     metrics : ["recall", "ndcg", "precision", "map"] # metrics for evaluation
     model_dir : ./gnn/outputs/ # directory of models checkpoints, metrics, and plots
+    automl_res_path: "model_performances_50epochs.csv"
