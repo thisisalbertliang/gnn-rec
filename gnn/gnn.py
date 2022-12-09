@@ -58,6 +58,29 @@ class GraphAttentionLayer(layers.Layer):
         return self.__class__.__name__ + ' (' + str(self.in_features) + ' -> ' + str(self.out_features) + ')'
 
 
+class SelfAttention(layers.Layer):
+    def __init__(self, embedding_size):
+        super().__init__()
+        self.embedding_size = embedding_size
+        self.WQ = self.add_weight(
+            shape=(embedding_size, embedding_size),
+            initializer=initializers.GlorotUniform(),
+            name="self_attn_queries"
+        )
+        self.WK = self.add_weight(
+            shape=(embedding_size, embedding_size),
+            initializer=initializers.GlorotUniform(),
+            name="self_attn_keys"
+        )
+        self.attn = layers.Attention()
+
+    def call(self, embs): # embs.shape == (2625, 4, 64)
+        queries = tf.matmul(embs, self.WQ)
+        keys = tf.matmul(embs, self.WK)
+        attn_res = self.attn([queries, embs])
+        return attn_res
+
+
 class GNN(object):
     """GNN model
     """
@@ -115,7 +138,8 @@ class GNN(object):
         self.pos_items = tf.compat.v1.placeholder(tf.int32, shape=(None,))
         self.neg_items = tf.compat.v1.placeholder(tf.int32, shape=(None,))
 
-        self.weights = self._init_weights()
+        self.weights, self.alphas = self._init_weights()
+        self.self_attn = SelfAttention(self.emb_dim)
         self.info_updater = self._init_info_updater()
 
         self.gat = GraphAttentionLayer(self.emb_dim, self.emb_dim, dropout=0, alpha=0.2)
@@ -182,9 +206,12 @@ class GNN(object):
         all_weights["item_embedding"] = tf.Variable(
             initializer([self.n_items, self.emb_dim]), name="item_embedding"
         )
+        alphas = tf.Variable(
+            initializer([self.n_layers+1]), name="alphas"
+        )
         print("Using xavier initialization.")
 
-        return all_weights
+        return all_weights, alphas
     
     def _init_info_updater(self):
         if self.info_updater == "multi_linear":
@@ -234,9 +261,16 @@ class GNN(object):
 
         all_embeddings = tf.stack(all_embeddings, 1) # (2625, 4, 64)
         # print(all_embeddings.shape, self.n_layers)
-        all_embeddings = tf.reduce_mean(
-            input_tensor=all_embeddings, axis=1, keepdims=False
-        )
+
+        if self.final_node_repr == "mean":
+            all_embeddings = tf.reduce_mean(all_embeddings, axis=1)
+        elif self.final_node_repr == "weighted":
+            all_embeddings = tf.einsum("nkd,k->nd", all_embeddings, tf.nn.softmax(self.alphas))
+        elif self.final_node_repr == "concat":
+            all_embeddings = tf.reshape(all_embeddings, shape=[-1, (self.n_layers+1)*self.emb_dim])
+        elif self.final_node_repr == "attention":
+            all_embeddings = self.self_attn(all_embeddings)[:,0,:]
+
         u_g_embeddings, i_g_embeddings = tf.split(
             all_embeddings, [self.n_users, self.n_items], 0
         )

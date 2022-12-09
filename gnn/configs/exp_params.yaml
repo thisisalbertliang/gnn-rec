@@ -11,7 +11,7 @@ model:
     n_layers : 3 # number of layers of the model
     neighbor_aggregator : "attention" # "degree_norm", "attention"
     info_updater : "direct" # "direct", "linear"
-    final_node_repr : "mean" # "mean", "concat", ("weighted", "attention")
+    final_node_repr : "weighted" # "mean", "concat", "weighted", "attention"
     
 #train
 train:
