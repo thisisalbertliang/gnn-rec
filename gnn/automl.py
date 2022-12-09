@@ -25,12 +25,12 @@ if __name__ == '__main__':
 
     dataset = movielens.load_pandas_df(size=params.dataset_size)
 
-    num_seeds = 10
+    num_seeds = 3
     original_seed = params.seed
     all_metrics = {}
-    for k in params.metrics:
-        all_metrics[k] = []
-        all_metrics[k+'_std'] = []
+    for metric_name in params.metrics:
+        all_metrics[metric_name] = []
+        all_metrics[metric_name + '_std'] = []
     all_metrics['modelname'] = []
 
     for neighbor_aggregator in ['degree_norm', 'attention']:
@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 params.final_node_repr = final_node_repr
                 model_name = f'{neighbor_aggregator}|{info_updater}|{final_node_repr}'
 
-                metrics_accumulator = {k: [] for k in params.metrics}
+                metrics_accumulator = {metric_name: [] for metric_name in params.metrics}
                 for i in range(num_seeds):
 
                     params.model_name = f'{model_name}_{i}'
@@ -56,13 +56,14 @@ if __name__ == '__main__':
                     }
 
                     metrics = eval(params, models, test_set, eval_baselines=False)[params.model_name]
-                    # import pdb; pdb.set_trace()
-                    for k in params.metrics:
-                        metrics_accumulator[k].append(metrics[k])
 
-                for k in params.metrics:
-                    all_metrics[k].append(np.mean(metrics_accumulator[k]))
-                    all_metrics[k+'_std'].append(np.std(metrics_accumulator[k]))
+                    for metric_name in params.metrics:
+                        metrics_accumulator[metric_name].append(metrics[metric_name])
+
+                for metric_name in params.metrics:
+                    all_metrics[metric_name].append(np.mean(metrics_accumulator[metric_name]))
+                    all_metrics[metric_name+'_std'].append(np.std(metrics_accumulator[metric_name]))
+
                 all_metrics['modelname'].append(model_name)
 
     df = pd.DataFrame(data=all_metrics)
