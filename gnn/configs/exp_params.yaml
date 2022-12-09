@@ -10,7 +10,7 @@ model:
     embed_size : 64 # the embedding dimension of users and items
     n_layers : 3 # number of layers of the model
     neighbor_aggregator : "attention" # "degree_norm", "attention"
-    info_updater : "direct" # "direct", "linear"
+    info_updater : "direct" # "direct", "single_linear", "multi_linear"
     final_node_repr : "weighted" # "mean", "concat", "weighted", "attention"
     
 #train

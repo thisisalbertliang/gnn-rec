@@ -34,7 +34,7 @@ if __name__ == '__main__':
     all_metrics['modelname'] = []
 
     for neighbor_aggregator in ['degree_norm', 'attention']:
-        for info_updater in ['direct', 'linear']:
+        for info_updater in ['direct', 'single_linear', 'multi_linear']:
             for final_node_repr in ['mean', 'concat', 'weighted', 'attention']:
 
                 params.neighbor_aggregator = neighbor_aggregator
@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
                 for k in params.metrics:
                     all_metrics[k].append(np.mean(metrics_accumulator[k]))
-                    all_metrics[k+'_std'].append(np.std(metrics_accumulator[k], ddof=1))
+                    all_metrics[k+'_std'].append(np.std(metrics_accumulator[k]))
                 all_metrics['modelname'].append(model_name)
 
     df = pd.DataFrame(data=all_metrics)
