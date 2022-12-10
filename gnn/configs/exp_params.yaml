@@ -10,8 +10,8 @@ model:
     embed_size : 64 # the embedding dimension of users and items
     n_layers : 3 # number of layers of the model
     neighbor_aggregator : "attention" # "degree_norm", "attention"
-    info_updater : "direct" # "direct", "linear"
-    final_node_repr : "mean" # "mean", "concat", ("weighted", "attention")
+    info_updater : "direct" # "direct", "single_linear", "multi_linear"
+    final_node_repr : "weighted" # "mean", "concat", "weighted", "attention"
     
 #train
 train:
@@ -29,3 +29,4 @@ info:
     save_epoch : 50 # if save_model is set to True, save the model every save_epoch
     metrics : ["recall", "ndcg", "precision", "map"] # metrics for evaluation
     model_dir : ./gnn/outputs/ # directory of models checkpoints, metrics, and plots
+    automl_res_path: "model_performances_50epochs.csv"
