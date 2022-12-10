@@ -84,8 +84,8 @@ def plot_top_models_and_baselines(
     metric_display_names = ['Precision @ K', 'Recall @ K', 'nDCG @ K', 'MAP @ K']
     metric_names = ['precision', 'recall', 'ndcg', 'map']
 
-    x = np.arange(len(metric_display_names)) * 10  # the metric locations
-    width = 3  # the width of each metric
+    x = np.arange(len(metric_display_names)) * 7  # the metric locations
+    width = (n + 2) / 2  # the width of each metric
     delta = np.linspace(-width, width, n + 2)
     bar_width = 1
     
@@ -224,7 +224,7 @@ if __name__ == "__main__":
     os.makedirs(PLOT_DIR, exist_ok=True)
     
     model_2_metrics = load_metrics(METRICS_DIR)
-    plot_top_models_and_baselines(model_2_metrics, save_path=f'{PLOT_DIR}/ranking_metrics.png')
+    plot_top_models_and_baselines(model_2_metrics, save_path=f'{PLOT_DIR}/ranking_metrics.png', n=1)
     plot_metrics_by_algorithms(model_2_metrics, component='neighbor_aggregator', save_path=f'{PLOT_DIR}/neighbor_aggregator.png')
     plot_metrics_by_algorithms(model_2_metrics, component='info_updater', save_path=f'{PLOT_DIR}/info_updater.png')
     plot_metrics_by_algorithms(model_2_metrics, component='final_node_repr', save_path=f'{PLOT_DIR}/final_node_repr.png')
