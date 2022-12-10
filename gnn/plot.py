@@ -8,6 +8,13 @@ from heapq import heappush, heappop
 from copy import deepcopy
 
 
+_METRIC_DISPLAY_NAMES = ['Precision @ K', 'Recall @ K', 'nDCG @ K', 'MAP @ K']
+_METRIC_NAMES = ['precision', 'recall', 'ndcg', 'map']
+_METRIC_2_IDX = {name: idx for idx, name in enumerate(_METRIC_NAMES)}
+
+BASELINES = ['SVD', 'NMF', 'SlopeOne', 'KNNBa', 'NormalPredictor']
+
+
 def load_metrics(metrics_dir):
     metrics_files = [f for f in os.listdir(metrics_dir) if os.path.isfile(os.path.join(metrics_dir, f)) and f.endswith(".metrics")]
     model_2_metrics = {}
@@ -44,7 +51,6 @@ def get_best_baseline(model_2_metrics: Dict[str, Dict[str, float]]):
     """
     Returns a dict mapping from metric names to the best baseline model
     """
-    BASELINES = ['SVD', 'NMF', 'SlopeOne', 'KNNBasic', 'NormalPredictor']
     metric_2_best_baseline = dict()
     for model_name, metrics in model_2_metrics.items():
         if model_name in BASELINES:
@@ -73,6 +79,78 @@ def _ensure_and_get_unique_epoch(model_2_metrics: Dict[str, Dict[str, float]]):
     return unqiue_epoch
 
 
+def plot_best_models_and_baselines(
+    model_2_metrics: Dict[str, Dict[str, float]],
+    save_path=None
+):
+    model_2_metrics = deepcopy(model_2_metrics) # defensive copy
+    unique_epochs = _ensure_and_get_unique_epoch(model_2_metrics)
+    
+    x = np.arange(len(_METRIC_NAMES)) * 7  # the metric locations
+    metric_width = 2  # the width of each metric
+    bar_width = 1
+    
+    metric_2_best_model = get_top_models(model_2_metrics, n=1)
+    best_models = set([
+        model_name for _, [model_name] in metric_2_best_model.items()
+    ])
+    metric_2_all_best_models = defaultdict(list)
+    for best_model in best_models:
+        for metric_name in _METRIC_NAMES:
+            metric_2_all_best_models[metric_name].append(
+                (model_2_metrics[best_model][metric_name], best_model)
+            )
+    metric_2_sorted_models = {
+        metric_name: [model for _, model in sorted(models, key=lambda x: x[0], reverse=True)]
+        for metric_name, models in metric_2_all_best_models.items()
+    }
+    
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 6)
+
+    delta = np.linspace(-metric_width, metric_width, len(best_models) + 2)
+    # plot the best models
+    colors = ['red', 'violet', 'blue']
+    for i, best_model in enumerate(best_models):
+        ax.bar(
+            x + np.array([delta[metric_2_sorted_models[metric_name].index(best_model)] for metric_name in _METRIC_NAMES]),
+            [model_2_metrics[best_model][metric_name] for metric_name in _METRIC_NAMES],
+            width=bar_width,
+            label=best_model[:-2],
+            color=colors[i]
+        )
+    # plot LightGCN
+    ax.bar(
+        x + delta[len(best_models)],
+        [model_2_metrics['degree_norm|direct|mean'][name] for name in _METRIC_NAMES],
+        width=bar_width,
+        label='LightGCN',
+        color='wheat'
+    )
+    # plot the best baseline
+    metric_2_best_baseline = get_best_baseline(model_2_metrics)
+    best_baseline_2_metrics = defaultdict(dict)
+    for metric_name, best_baseline in metric_2_best_baseline.items():
+        best_baseline_2_metrics[best_baseline][metric_name] = model_2_metrics[best_baseline][metric_name]
+    colors = ['lightgrey', 'darkgrey']
+    for i, (best_baseline, metrics) in enumerate(best_baseline_2_metrics.items()):
+        ax.bar(
+            np.array([x[_METRIC_2_IDX[metric_name]] for metric_name in metrics.keys()]) + delta[len(best_models) + 1],
+            [metric_value for metric_value in metrics.values()],
+            width=bar_width,
+            label=best_baseline if best_baseline != 'KNNBa' else 'KNN',
+            color=colors[i]
+        )
+    
+    ax.set_ylabel('Metric Value')
+    ax.set_title(f'Rank-based Metrics of the Best GNNs\nbenchmarked by LightGCN and the Best Baseline Model\n(Epochs = {unique_epochs})')
+    ax.set_xticks(x, _METRIC_DISPLAY_NAMES)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.12, 1.0))
+    
+    if save_path is not None:
+        fig.savefig(save_path, dpi=300)
+
+
 def plot_top_models_and_baselines(
     model_2_metrics: Dict[str, Dict[str, float]],
     n = 3,
@@ -80,16 +158,11 @@ def plot_top_models_and_baselines(
 ):
     """Plots the top N GNNs, LightGCN, and the best baseline for each metric"""
     model_2_metrics = deepcopy(model_2_metrics) # defensive copy
-    
-    metric_display_names = ['Precision @ K', 'Recall @ K', 'nDCG @ K', 'MAP @ K']
-    metric_names = ['precision', 'recall', 'ndcg', 'map']
 
-    x = np.arange(len(metric_display_names)) * 7  # the metric locations
+    x = np.arange(len(_METRIC_NAMES)) * 7  # the metric locations
     width = (n + 2) / 2  # the width of each metric
     delta = np.linspace(-width, width, n + 2)
     bar_width = 1
-    
-    metric_2_idx = {metric: i for i, metric in enumerate(metric_names)}
     
     fig, ax = plt.subplots()
     fig.set_size_inches(10, 6)
@@ -110,32 +183,32 @@ def plot_top_models_and_baselines(
     # plot the top N GNNs performance
     for model, metrics in top_model_2_metrics.items():
         ax.bar(
-            np.array([x[metric_2_idx[metric_name]] for metric_name in metrics.keys()]) + np.array([delta[rank] for _, rank in metrics.values()]),
+            np.array([x[_METRIC_2_IDX[metric_name]] for metric_name in metrics.keys()]) + np.array([delta[rank] for _, rank in metrics.values()]),
             [metric_value for metric_value, _ in metrics.values()],
             width=bar_width,
-            label=model,
+            label=model[:-2],
         )
     
     # plot LightGCN performance
     ax.bar(
         x + delta[n],
-        [model_2_metrics['degree_norm|direct|mean'][name] for name in metric_names],
+        [model_2_metrics['degree_norm|direct|mean'][name] for name in _METRIC_NAMES],
         width=bar_width,
         label='LightGCN'
     )
     
-    #plot best baseline performance
+    # plot best baseline performance
     for best_baseline, metrics in best_baseline_2_metrics.items():
         ax.bar(
-            np.array([x[metric_2_idx[metric_name]] for metric_name in metrics.keys()]) + delta[n + 1],
+            np.array([x[_METRIC_2_IDX[metric_name]] for metric_name in metrics.keys()]) + delta[n + 1],
             [metric_value for metric_value in metrics.values()],
             width=bar_width,
-            label=best_baseline
+            label=best_baseline if best_baseline != 'KNNBa' else 'KNN'
         )
     
     ax.set_ylabel('Metric Value')
     ax.set_title(f'Rank-based Metrics of Top Performing GNNs\nbenchmarked by LightGCN and the Best Baseline Model\n(Epochs = {unique_epochs})')
-    ax.set_xticks(x, metric_display_names)
+    ax.set_xticks(x, _METRIC_DISPLAY_NAMES)
     ax.legend(loc='upper right', bbox_to_anchor=(1.12, 1.0))
     
     if save_path is not None:
@@ -182,15 +255,13 @@ def plot_metrics_by_algorithms(
     
     architectures = get_architectures(component)
     
-    metric_display_names = ['Precision @ K', 'Recall @ K', 'nDCG @ K', 'MAP @ K']
-    metric_names = ['precision', 'recall', 'ndcg', 'map']
     component_display_names = {
         'neighbor_aggregator': 'Neighbor Aggregator',
         'info_updater': 'Information Update',
         'final_node_repr': 'Final Node Representation'
     }
     
-    x = np.arange(len(metric_display_names)) * 8  # the metric locations
+    x = np.arange(len(_METRIC_NAMES)) * 8  # the metric locations
     metric_width = len(architectures) / 2  # the width of each metric
     bar_width = 1  # the width of each bar
     delta = np.linspace(-metric_width, metric_width, len(architectures))
@@ -204,14 +275,14 @@ def plot_metrics_by_algorithms(
         metrics = model_2_metrics[architecture]
         plt.bar(
             x + delta[i],
-            [metrics[name] for name in metric_names],
+            [metrics[name] for name in _METRIC_NAMES],
             width=bar_width,
             label=algorithm
         )
     
     ax.set_ylabel('Metric Value')
     ax.set_title(f'Rank-based Metrics of Algorithms in {component_display_names[component]}\n(Epochs = {unique_epochs})')
-    ax.set_xticks(x, metric_display_names)
+    ax.set_xticks(x, _METRIC_DISPLAY_NAMES)
     ax.legend(loc='upper right')
     
     if save_path is not None:
@@ -228,3 +299,4 @@ if __name__ == "__main__":
     plot_metrics_by_algorithms(model_2_metrics, component='neighbor_aggregator', save_path=f'{PLOT_DIR}/neighbor_aggregator.png')
     plot_metrics_by_algorithms(model_2_metrics, component='info_updater', save_path=f'{PLOT_DIR}/info_updater.png')
     plot_metrics_by_algorithms(model_2_metrics, component='final_node_repr', save_path=f'{PLOT_DIR}/final_node_repr.png')
+    plot_best_models_and_baselines(model_2_metrics, save_path=f'{PLOT_DIR}/best_models_and_baselines.png')
