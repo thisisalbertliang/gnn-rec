@@ -12,7 +12,10 @@ _METRIC_DISPLAY_NAMES = ['Precision @ K', 'Recall @ K', 'nDCG @ K', 'MAP @ K']
 _METRIC_NAMES = ['precision', 'recall', 'ndcg', 'map']
 _METRIC_2_IDX = {name: idx for idx, name in enumerate(_METRIC_NAMES)}
 
-BASELINES = ['SVD', 'NMF', 'SlopeOne', 'KNNBa', 'NormalPredictor']
+_LABEL_FMT = '%.3f'
+_LABEL_SIZE = 7
+
+_BASELINES = ['SVD', 'NMF', 'SlopeOne', 'KNNBa', 'NormalPredictor']
 
 
 def load_metrics(metrics_dir):
@@ -53,7 +56,7 @@ def get_best_baseline(model_2_metrics: Dict[str, Dict[str, float]]):
     """
     metric_2_best_baseline = dict()
     for model_name, metrics in model_2_metrics.items():
-        if model_name in BASELINES:
+        if model_name in _BASELINES:
             for metric_name, metric_value in metrics.items():
                 metric_2_best_baseline[metric_name] = max(
                     metric_2_best_baseline.get(metric_name, (-float('inf'), None)),
@@ -112,7 +115,7 @@ def plot_best_models_and_baselines(
     # plot the best models
     colors = ['tab:red', 'tab:orange', 'tab:blue']
     for i, best_model in enumerate(best_models):
-        ax.bar_label(fmt='%.2f', container=ax.bar(
+        ax.bar_label(fmt=_LABEL_FMT, size=_LABEL_SIZE, container=ax.bar(
             x + np.array([delta[metric_2_sorted_models[metric_name].index(best_model)] for metric_name in _METRIC_NAMES]),
             [model_2_metrics[best_model][metric_name] for metric_name in _METRIC_NAMES],
             width=bar_width,
@@ -120,7 +123,7 @@ def plot_best_models_and_baselines(
             color=colors[i]
         ))
     # plot LightGCN
-    ax.bar_label(fmt='%.2f', container=ax.bar(
+    ax.bar_label(fmt=_LABEL_FMT, size=_LABEL_SIZE, container=ax.bar(
         x + delta[len(best_models)],
         [model_2_metrics['degree_norm|direct|mean'][name] for name in _METRIC_NAMES],
         width=bar_width,
@@ -134,7 +137,7 @@ def plot_best_models_and_baselines(
         best_baseline_2_metrics[best_baseline][metric_name] = model_2_metrics[best_baseline][metric_name]
     colors = ['lightgrey', 'sandybrown']
     for i, (best_baseline, metrics) in enumerate(best_baseline_2_metrics.items()):
-        ax.bar_label(fmt='%.2f', container=ax.bar(
+        ax.bar_label(fmt=_LABEL_FMT, size=_LABEL_SIZE, container=ax.bar(
             np.array([x[_METRIC_2_IDX[metric_name]] for metric_name in metrics.keys()]) + delta[len(best_models) + 1],
             [metric_value for metric_value in metrics.values()],
             width=bar_width,
@@ -274,7 +277,7 @@ def plot_metrics_by_algorithms(
     
     for i, (architecture, algorithm) in enumerate(architectures):
         metrics = model_2_metrics[architecture]
-        ax.bar_label(fmt='%.2f', container=ax.bar(
+        ax.bar_label(fmt=_LABEL_FMT, size=_LABEL_SIZE, container=ax.bar(
             x + delta[i],
             [metrics[name] for name in _METRIC_NAMES],
             width=bar_width,
