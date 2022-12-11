@@ -86,8 +86,8 @@ def plot_best_models_and_baselines(
     model_2_metrics = deepcopy(model_2_metrics) # defensive copy
     unique_epochs = _ensure_and_get_unique_epoch(model_2_metrics)
     
-    x = np.arange(len(_METRIC_NAMES)) * 7  # the metric locations
-    metric_width = 2  # the width of each metric
+    x = np.arange(len(_METRIC_NAMES)) * 9  # the metric locations
+    metric_width = 3  # the width of each metric
     bar_width = 1
     
     metric_2_best_model = get_top_models(model_2_metrics, n=1)
@@ -110,42 +110,43 @@ def plot_best_models_and_baselines(
 
     delta = np.linspace(-metric_width, metric_width, len(best_models) + 2)
     # plot the best models
-    colors = ['red', 'violet', 'blue']
+    colors = ['tab:red', 'tab:orange', 'tab:blue']
     for i, best_model in enumerate(best_models):
-        ax.bar(
+        ax.bar_label(fmt='%.2f', container=ax.bar(
             x + np.array([delta[metric_2_sorted_models[metric_name].index(best_model)] for metric_name in _METRIC_NAMES]),
             [model_2_metrics[best_model][metric_name] for metric_name in _METRIC_NAMES],
             width=bar_width,
             label=best_model[:-2],
             color=colors[i]
-        )
+        ))
     # plot LightGCN
-    ax.bar(
+    ax.bar_label(fmt='%.2f', container=ax.bar(
         x + delta[len(best_models)],
         [model_2_metrics['degree_norm|direct|mean'][name] for name in _METRIC_NAMES],
         width=bar_width,
         label='LightGCN',
         color='wheat'
-    )
+    ))
     # plot the best baseline
     metric_2_best_baseline = get_best_baseline(model_2_metrics)
     best_baseline_2_metrics = defaultdict(dict)
     for metric_name, best_baseline in metric_2_best_baseline.items():
         best_baseline_2_metrics[best_baseline][metric_name] = model_2_metrics[best_baseline][metric_name]
-    colors = ['lightgrey', 'darkgrey']
+    colors = ['lightgrey', 'sandybrown']
     for i, (best_baseline, metrics) in enumerate(best_baseline_2_metrics.items()):
-        ax.bar(
+        ax.bar_label(fmt='%.2f', container=ax.bar(
             np.array([x[_METRIC_2_IDX[metric_name]] for metric_name in metrics.keys()]) + delta[len(best_models) + 1],
             [metric_value for metric_value in metrics.values()],
             width=bar_width,
             label=best_baseline if best_baseline != 'KNNBa' else 'KNN',
             color=colors[i]
-        )
+        ))
     
+    # ax.bar_label(rects)
     ax.set_ylabel('Metric Value')
     ax.set_title(f'Rank-based Metrics of the Best GNNs\nbenchmarked by LightGCN and the Best Baseline Model\n(Epochs = {unique_epochs})')
     ax.set_xticks(x, _METRIC_DISPLAY_NAMES)
-    ax.legend(loc='upper right', bbox_to_anchor=(1.12, 1.0))
+    ax.legend(loc='upper right', bbox_to_anchor=(1.065, 1.0))
     
     if save_path is not None:
         fig.savefig(save_path, dpi=300)
@@ -273,12 +274,12 @@ def plot_metrics_by_algorithms(
     
     for i, (architecture, algorithm) in enumerate(architectures):
         metrics = model_2_metrics[architecture]
-        plt.bar(
+        ax.bar_label(fmt='%.2f', container=ax.bar(
             x + delta[i],
             [metrics[name] for name in _METRIC_NAMES],
             width=bar_width,
             label=algorithm
-        )
+        ))
     
     ax.set_ylabel('Metric Value')
     ax.set_title(f'Rank-based Metrics of Algorithms in {component_display_names[component]}\n(Epochs = {unique_epochs})')
@@ -295,7 +296,7 @@ if __name__ == "__main__":
     os.makedirs(PLOT_DIR, exist_ok=True)
     
     model_2_metrics = load_metrics(METRICS_DIR)
-    plot_top_models_and_baselines(model_2_metrics, save_path=f'{PLOT_DIR}/ranking_metrics.png', n=1)
+    # plot_top_models_and_baselines(model_2_metrics, save_path=f'{PLOT_DIR}/ranking_metrics.png', n=1)
     plot_metrics_by_algorithms(model_2_metrics, component='neighbor_aggregator', save_path=f'{PLOT_DIR}/neighbor_aggregator.png')
     plot_metrics_by_algorithms(model_2_metrics, component='info_updater', save_path=f'{PLOT_DIR}/info_updater.png')
     plot_metrics_by_algorithms(model_2_metrics, component='final_node_repr', save_path=f'{PLOT_DIR}/final_node_repr.png')
